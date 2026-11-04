@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kamil3D – Sklep</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080b12;color:white;font-family:Arial,sans-serif}
+header{background:#101827;padding:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-bottom:2px solid #168cff}
+.logo{font-size:27px;font-weight:bold;color:#28a1ff}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+button{background:#168cff;color:white;border:0;padding:11px 15px;border-radius:8px;cursor:pointer;font-weight:bold}
+button:hover{background:#0871ce}
+.secondary{background:#26364c}
+.danger{background:#c73535}
+main{max-width:1100px;margin:auto;padding:20px}
+.view{display:none}
+.view.active{display:block}
+h1,h2{color:#45aaff}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px}
+.product,.panel,.cartbox{background:#111b2a;padding:16px;border-radius:12px;border:1px solid #263c56}
+.product h3{margin-top:0}
+.price{font-size:20px;color:#45aaff;font-weight:bold}
+input,select,textarea{width:100%;padding:12px;margin:7px 0 14px;background:#080f1b;border:1px solid #34506e;color:white;border-radius:7px}
+label{display:block;color:#c7d9ed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cartitem{border-bottom:1px solid #34506e;padding:12px 0}
+.small{font-size:13px;color:#a9bdd2}
+.total{font-size:24px;color:#45aaff;font-weight:bold}
+footer{text-align:center;color:#72849b;padding:30px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Kamil3D</div>
+  <nav>
+    <button onclick="show('shop')">Sklep</button>
+    <button onclick="show('cart')">🛒 Koszyk (<span id="cartCount">0</span>)</button>
+    <button class="secondary" onclick="show('ownerLogin')">Właściciel</button>
+    <button class="secondary" onclick="show('adminLogin')">Administrator</button>
+  </nav>
+</header>
+
+<main>
+
+<section id="shop" class="view active">
+  <h1>Witaj w Kamil3D!</h1>
+  <p>Odkryj nasze produkty drukowane w 3D.</p>
+  <input id="search" placeholder="Szukaj produktu..." oninput="renderProducts()">
+  <div id="products" class="grid"></div>
+</section>
+
+<section id="cart" class="view">
+  <h1>Twój koszyk</h1>
+  <div class="cartbox">
+    <div id="cartItems"></div>
+    <h2>Bon rabatowy</h2>
+    <div class="row">
+      <input id="couponInput" placeholder="Wpisz kod bonu">
+      <button onclick="applyCoupon()">Zastosuj</button>
+    </div>
+    <p id="couponMessage" class="small"></p>
+    <div id="freeChoiceBox" style="display:none">
+      <label>Wybierz produkt, który ma być darmowy:</label>
+      <select id="freeChoice" onchange="renderCart()"></select>
+    </div>
+    <p>Razem: <span class="total" id="cartTotal">0,00 zł</span></p>
+  </div>
+
+  <h2>Dane do zamówienia</h2>
+  <div class="panel">
+    <label>Imię i nazwisko</label><input id="customerName">
+    <label>Telefon</label><input id="customerPhone">
+    <label>E-mail</label><input id="customerEmail" type="email">
+    <label>Ulica i numer domu</label><input id="customerStreet">
+    <label>Kod pocztowy</label><input id="customerPost">
+    <label>Miasto</label><input id="customerCity">
+    <label>Uwagi do zamówienia</label><textarea id="customerNotes"></textarea>
+    <button onclick="placeOrder()">Złóż zamówienie</button>
+  </div>
+</section>
+
+<section id="ownerLogin" class="view">
+  <div class="panel">
+    <h1>Panel właściciela</h1>
+    <label>Hasło właściciela</label>
+    <input id="ownerPassword" type="password" placeholder="Wpisz hasło">
+    <button onclick="loginOwner()">Zaloguj się</button>
+    <button class="secondary" onclick="show('shop')">Wróć</button>
+    <p id="ownerError"></p>
+  </div>
+</section>
+
+<section id="adminLogin" class="view">
+  <div class="panel">
+    <h1>Panel administratora</h1>
+    <label>Hasło administratora</label>
+    <input id="adminPassword" type="password" placeholder="Wpisz hasło">
+    <button onclick="loginAdmin()">Zaloguj się</button>
+    <button class="secondary" onclick="show('shop')">Wróć</button>
+    <p id="adminError"></p>
+  </div>
+</section>
+
+<section id="ownerPanel" class="view">
+  <div class="row">
+    <h1>Panel właściciela</h1>
+    <button class="danger" onclick="logout()">Wyloguj</button>
+  </div>
+  <div class="panel">
+    <h2>Dodaj produkt</h2>
+    <label>Nazwa produktu</label><input id="newName">
+    <label>Cena (zł)</label><input id="newPrice" type="number" min="0" step="0.01">
+    <label>Opis</label><input id="newDescription">
+    <button onclick="addProduct()">Dodaj produkt</button>
+  </div>
+
+  <div class="panel">
+    <h2>Produkty</h2>
+    <div id="ownerProducts"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Generuj bon</h2>
+    <label>Rodzaj bonu</label>
+    <select id="couponType">
+      <option value="10">10% rabatu</option>
+      <option value="20">20% rabatu</option>
+      <option value="50">50% rabatu</option>
+      <option value="free">Jeden darmowy produkt</option>
+    </select>
+    <button onclick="generateCoupon()">Generuj bon</button>
+    <div id="couponList"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Zamówienia</h2>
+    <div id="ownerOrders"></div>
+  </div>
+</section>
+
+<section id="adminPanel" class="view">
+  <div class="row">
+    <h1>Panel administratora</h1>
+    <button class="danger" onclick="logout()">Wyloguj</button>
+  </div>
+  <div class="panel">
+    <h2>Dodaj produkt</h2>
+    <label>Nazwa produktu</label><input id="adminNewName">
+    <label>Cena (zł)</label><input id="adminNewPrice" type="number" min="0" step="0.01">
+    <label>Opis</label><input id="adminNewDescription">
+    <button onclick="adminAddProduct()">Dodaj produkt</button>
+  </div>
+  <div class="panel">
+    <h2>Zamówienia</h2>
+    <div id="adminOrders"></div>
+  </div>
+</section>
+
+</main>
+<footer>Kamil3D © 2026</footer>
+
+<script>
+const OWNER_PASSWORD = "2137&&";
+const ADMIN_PASSWORD = "admin2137&";
+
+const starter = [
+["Brelok serce",8],["Brelok gwiazda",8],["Brelok kostka",9],
+["Brelok smok",12],["Brelok Minecraft",12],["Brelok miecz",10],
+["Brelok diament",10],["Brelok kot",9],["Brelok pies",9],
+["Brelok napis",12],["Stojak na telefon",20],["Stojak na słuchawki",25],
+["Organizer",18],["Uchwyt na kabel",7],["Podstawka",15],
+["Figurka mała",15],["Figurka średnia",25],["Figurka duża",40],
+["Mini wazon",18],["Wazon",35],["Zawieszka",8],
+["Magnes",7],["Ozdoba",12],["Pudełko",20],
+["Pojemnik",18],["Zwierzak 3D",20],["Robot 3D",25],
+["Samochód 3D",18],["Statek 3D",25],["Rakieta 3D",22],
+["Kostka logiczna",15],["Spinner",12],["Mini miecz",15],
+["Smok 3D",35],["Dinozaur 3D",30],["Podstawka pod pada",25],
+["Uchwyt na telefon",18],["Stojak na kontroler",30],
+["Ozdoba świąteczna",12],["Jajko niespodzianka",15],
+["Mini figurka",10],["Duża figurka",35],
+["Zawieszka imienna",15],["Brelok premium",18],
+["Pudełko premium",30],["Organizer biurkowy",35],
+["Dekoracja 3D",25],["Mini domek",20],
+["Model samolotu",30],["Model pojazdu",35]
+];
+
+let products = JSON.parse(localStorage.getItem("k3products") || "null");
+if(!products){
+  products = starter.map((p,i)=>({id:i+1,name:p[0],price:p[1],description:"Produkt Kamil3D"}));
+  products.push(
+    {id:51,name:"Mystery Box Mały",price:20,description:"Mała niespodzianka"},
+    {id:52,name:"Mystery Box Średni",price:40,description:"Średnia niespodzianka"},
+    {id:53,name:"Mystery Box Duży",price:70,description:"Duża niespodzianka"},
+    {id:54,name:"Mystery Box Właściciela",price:1000,description:"Wyjątkowy Mystery Box"}
+  );
+  saveProducts();
+}
+
+let cart = JSON.parse(localStorage.getItem("k3cart") || "[]");
+let coupons = JSON.parse(localStorage.getItem("k3coupons") || "[]");
+let orders = JSON.parse(localStorage.getItem("k3orders") || "[]");
+let activeCoupon = null;
+let currentRole = null;
+
+function saveProducts(){localStorage.setItem("k3products",JSON.stringify(products))}
+function saveCart(){localStorage.setItem("k3cart",JSON.stringify(cart))}
+function saveCoupons(){localStorage.setItem("k3coupons",JSON.stringify(coupons))}
+function saveOrders(){localStorage.setItem("k3orders",JSON.stringify(orders))}
+function money(n){return Number(n).toFixed(2).replace(".",",")+" zł"}
+function safe(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function show(id){
+  document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  if(id==="cart")renderCart();
+  if(id==="ownerPanel")renderOwner();
+  if(id==="adminPanel")renderAdmin();
+  if(id==="shop")renderProducts();
+}
+function productById(id){return products.find(p=>p.id===id)}
+function renderProducts(){
+  let q=(document.getElementById("search")?.value||"").toLowerCase();
+  document.getElementById("products").innerHTML=products
+    .filter(p=>p.name.toLowerCase().includes(q))
+    .map(p=>`<div class="product">
+      <h3>${safe(p.name)}</h3>
+      <p>${safe(p.description||"")}</p>
+      <p class="price">${money(p.price)}</p>
+      <button onclick="addToCart(${p.id})">Dodaj do koszyka</button>
+    </div>`).join("");
+}
+function addToCart(id){
+  let item=cart.find(x=>x.id===id);
+  if(item)item.qty++;
+  else cart.push({id,qty:1});
+  saveCart();updateCount();alert("Dodano do koszyka!");
+}
+function updateCount(){
+  document.getElementById("cartCount").textContent=cart.reduce((s,x)=>s+x.qty,0);
+}
+function removeItem(id){
+  cart=cart.filter(x=>x.id!==id);
+  saveCart();renderCart();
+}
+function changeQty(id,qty){
+  let item=cart.find(x=>x.id===id);
+  if(!item)return;
+  item.qty=Math.max(1,Math.min(99,Number(qty)||1));
+  saveCart();renderCart();
+}
+function freeId(){return Number(document.getElementById("freeChoice")?.value||0)}
+function isOwnerBox(p){return p.name==="Mystery Box Właściciela"}
+function lineTotal(item){
+  let p=productById(item.id);
+  if(!p)return 0;
+  let total=p.price*item.qty;
+  if(activeCoupon && !isOwnerBox(p)){
+    if(activeCoupon.type==="free" && p.id===freeId()){
+      total-=p.price;
+    }else if(activeCoupon.type!=="free"){
+      total-=p.price*item.qty*Number(activeCoupon.type)/100;
+    }
+  }
+  return Math.max(0,total);
+}
+function cartTotal(){return cart.reduce((s,x)=>s+lineTotal(x),0)}
+function renderCart(){
+  document.getElementById("cartItems").innerHTML=cart.length?cart.map(item=>{
+    let p=productById(item.id);
+    if(!p)return "";
+    return `<div class="cartitem">
+      <b>${safe(p.name)}</b> – ${money(p.price)}
+      <div class="row">
+        <label>Ilość:</label>
+        <input style="width:75px" type="number" min="1" max="99" value="${item.qty}" onchange="changeQty(${p.id},this.value)">
+        <button class="danger" onclick="removeItem(${p.id})">Usuń</button>
+      </div>
+      <span>${money(lineTotal(item))}</span>
+    </div>`;
+  }).join(""):"Koszyk jest pusty.";
+
+  let freeBox=document.getElementById("freeChoiceBox");
+  freeBox.style.display=activeCoupon?.type==="free"?"block":"none";
+  if(activeCoupon?.type==="free"){
+    let old=freeId();
+    let eligible=cart.filter(x=>{let p=productById(x.id);return p&&!isOwnerBox(p)});
+    document.getElementById("freeChoice").innerHTML=eligible.map(x=>{
+      let p=productById(x.id);
+      return `<option value="${p.id}">${safe(p.name)}</option>`;
+    }).join("");
+    if(eligible.some(x=>x.id===old))document.getElementById("freeChoice").value=old;
+  }
+  document.getElementById("cartTotal").textContent=money(cartTotal());
+  updateCount();
+}
+function applyCoupon(){
+  let code=document.getElementById("couponInput").value.trim().toUpperCase();
+  let c=coupons.find(x=>x.code===code&&!x.used);
+  if(!c){document.getElementById("couponMessage").textContent="Nieprawidłowy lub wykorzystany bon.";return}
+  if(coupons.find(x=>x.code===code&&x.used)){return}
+  if(!cart.length){document.getElementById("couponMessage").textContent="Najpierw dodaj produkt do koszyka.";return}
+  if(c.type==="free"&&!cart.some(x=>{let p=productById(x.id);return p&&!isOwnerBox(p)})){
+    document.getElementById("couponMessage").textContent="Ten bon nie obejmuje tego produktu.";
+    return;
+  }
+  activeCoupon=c;
+  document.getElementById("couponMessage").textContent="Bon zastosowany!";
+  renderCart();
+}
+function placeOrder(){
+  if(!cart.length){alert("Koszyk jest pusty.");return}
+  let fields=["customerName","customerPhone","customerEmail","customerStreet","customerPost","customerCity"];
+  if(fields.some(id=>!document.getElementById(id).value.trim())){
+    alert("Uzupełnij wszystkie wymagane dane.");return;
+  }
+  let order={
+    id:Date.now(),
+    date:new Date().toLocaleString("pl-PL"),
+    name:document.getElementById("customerName").value,
+    phone:document.getElementById("customerPhone").value,
+    email:document.getElementById("customerEmail").value,
+    street:document.getElementById("customerStreet").value,
+    post:document.getElementById("customerPost").value,
+    city:document.getElementById("customerCity").value,
+    notes:document.getElementById("customerNotes").value,
+    items:cart.map(x=>({name:productById(x.id)?.name,qty:x.qty,total:lineTotal(x)})),
+    total:cartTotal(),
+    status:"Nowe"
+  };
+  orders.push(order);saveOrders();
+  if(activeCoupon){
+    let c=coupons.find(x=>x.code===activeCoupon.code);
+    if(c)c.used=true;
+    saveCoupons();
+  }
+  cart=[];activeCoupon=null;saveCart();
+  fields.concat(["customerNotes"]).forEach(id=>document.getElementById(id).value="");
+  document.getElementById("couponInput").value="";
+  alert("Zamówienie zostało zapisane!");
+  show("shop");
+}
+function loginOwner(){
+  if(document.getElementById("ownerPassword").value===OWNER_PASSWORD){
+    currentRole="owner";show("ownerPanel");
+  }else document.getElementById("ownerError").textContent="Nieprawidłowe hasło.";
+}
+function loginAdmin(){
+  if(document.getElementById("adminPassword").value===ADMIN_PASSWORD){
+    currentRole="admin";show("adminPanel");
+  }else document.getElementById("adminError").textContent="Nieprawidłowe hasło.";
+}
+function logout(){currentRole=null;show("shop")}
+function addProduct(){
+  if(currentRole!=="owner")return;
+  let name=document.getElementById("newName").value.trim();
+  let price=Number(document.getElementById("newPrice").value);
+  let description=document.getElementById("newDescription").value.trim();
+  if(!name||!Number.isFinite(price)||price<=0){alert("Wpisz nazwę i prawidłową cenę.");return}
+  products.push({id:Date.now(),name,price,description});
+  saveProducts();
+  document.getElementById("newName").value="";
+  document.getElementById("newPrice").value="";
+  document.getElementById("newDescription").value="";
+  renderOwner();renderProducts();
+}
+function adminAddProduct(){
+  if(currentRole!=="admin")return;
+  let name=document.getElementById("adminNewName").value.trim();
+  let price=Number(document.getElementById("adminNewPrice").value);
+  let description=document.getElementById("adminNewDescription").value.trim();
+  if(!name||!Number.isFinite(price)||price<=0){alert("Wpisz nazwę i prawidłową cenę.");return}
+  products.push({id:Date.now(),name,price,description});
+  saveProducts();
+  document.getElementById("adminNewName").value="";
+  document.getElementById("adminNewPrice").value="";
+  document.getElementById("adminNewDescription").value="";
+  renderAdmin();renderProducts();
+}
+function deleteProduct(id){
+  if(currentRole!=="owner")return;
+  if(!confirm("Czy na pewno usunąć produkt?"))return;
+  products=products.filter(p=>p.id!==id);
+  cart=cart.filter(x=>x.id!==id);
+  saveProducts();saveCart();renderOwner();renderProducts();
+}
+function generateCoupon(){
+  if(currentRole!=="owner")return;
+  let type=document.getElementById("couponType").value;
+  let code=Array.from({length:16},()=>Math.floor(Math.random()*10)).join("");
+  coupons.push({code,type,used:false});
+  saveCoupons();renderOwner();
+}
+function renderOwner(){
+  if(currentRole!=="owner")return;
+  document.getElementById("ownerProducts").innerHTML=products.map(p=>
+    `<div class="cartitem">${safe(p.name)} – ${money(p.price)}
+    <button class="danger" onclick="deleteProduct(${p.id})">Usuń</button></div>`
+  ).join("");
+  document.getElementById("couponList").innerHTML=coupons.map(c=>
+    `<div class="cartitem"><b>${c.code}</b> – ${c.type==="free"?"Darmowy produkt":c.type+"%"}
+    – ${c.used?"Wykorzystany":"Aktywny"}</div>`
+  ).join("");
+  renderOrders("ownerOrders");
+}
+function renderOrders(id){
+  document.getElementById(id).innerHTML=orders.length?orders.map(o=>
+    `<div class="cartitem">
+      <h3>Zamówienie #${o.id}</h3>
+      <p>${safe(o.date)} | ${safe(o.status)}</p>
+      <p><b>${safe(o.name)}</b></p>
+      <p>${safe(o.phone)} | ${safe(o.email)}</p>
+      <p>${safe(o.street)}, ${safe(o.post)} ${safe(o.city)}</p>
+      <p>${o.items.map(i=>safe(i.name)+" × "+i.qty+" – "+money(i.total)).join("<br>")}</p>
+      <p class="price">${money(o.total)}</p>
+      <p>${safe(o.notes||"")}</p>
+      ${id==="ownerOrders"?`<select onchange="changeStatus(${o.id},this.value)">
+        ${["Nowe","W realizacji","Wysłane","Zakończone","Anulowane"].map(s=>`<option ${o.status===s?"selected":""}>${s}</option>`).join("")}
+      </select>`:""}
+    </div>`
+  ).join(""):"Brak zamówień.";
+}
+function changeStatus(id,status){
+  if(currentRole!=="owner")return;
+  let o=orders.find(x=>x.id===id);
+  if(o){o.status=status;saveOrders()}
+}
+function renderAdmin(){
+  if(currentRole!=="admin")return;
+  renderOrders("adminOrders");
+}
+renderProducts();
+updateCount();
+</script>
+</body>
+</html>
